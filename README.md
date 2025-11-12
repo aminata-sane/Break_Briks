@@ -80,14 +80,13 @@ Le jeu est structuré autour d'une boucle principale avec :
 - Conteneurs STL (`std::vector`) pour les briques
 - Gestion d'événements SFML 3.0
 
-## 👥 Contributeurs
+## 👥 Contributeur
 
-- **Aminata Constance Sané** 
-- **Mehdi Choucha**
-- **Nelson Deschamps**
+- **Aminata Constance Sané** - Développeuse principale
+
 ## 📄 Licence
 
-Ce projet est développé dans un cadre éducatif.
+Ce projet est développé pour un portfolio.
 
 ---
 
