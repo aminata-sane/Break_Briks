@@ -2,6 +2,7 @@
 #include "GameStates.h"
 #include "Menu.h"
 #include "Game.h"
+#include "CannonGame.h"
 #include "EndScreen.h"
 #include "GameData.h"
 
@@ -13,6 +14,7 @@ int main() {
     // Initialisation des gestionnaires (en local, pas en global)
     MenuManager menuManager;
     EndScreenManager endScreenManager;
+    CannonGame cannonGame;
     GameData gameData; // Contient toutes les données du jeu
 
     // Initialisation de l'état du jeu
@@ -38,10 +40,14 @@ int main() {
             // Transmettre les événements au bon gestionnaire
             switch (currentState) {
                 case GameState::MENU:
-                    menuManager.handleEvents(window, *event, currentState);
+                    menuManager.handleEvents(window, *event, currentState, gameData.currentMode);
                     break;
                 case GameState::PLAYING:
-                    handleGameEvents(window, *event, gameData);
+                    if (gameData.currentMode == GameMode::PADDLE) {
+                        handleGameEvents(window, *event, gameData);
+                    } else if (gameData.currentMode == GameMode::CANNON) {
+                        cannonGame.handleEvents(window, *event, gameData);
+                    }
                     break;
                 case GameState::VICTORY:
                 case GameState::GAME_OVER:
@@ -56,11 +62,29 @@ int main() {
                 menuManager.update(deltaTime);
                 break;
             case GameState::PLAYING:
-                updateGame(gameData, deltaTime, currentState);
+                // Initialiser le mode approprié si on vient de quitter le menu
+                static GameMode lastMode = GameMode::PADDLE;
+                if (lastMode != gameData.currentMode) {
+                    if (gameData.currentMode == GameMode::PADDLE) {
+                        initializeGame(gameData, window);
+                    } else if (gameData.currentMode == GameMode::CANNON) {
+                        cannonGame.initialize(window);
+                        gameData.score = 0; // Reset du score
+                    }
+                    lastMode = gameData.currentMode;
+                }
+                
+                // Mettre à jour selon le mode
+                if (gameData.currentMode == GameMode::PADDLE) {
+                    updateGame(gameData, deltaTime, currentState);
+                } else if (gameData.currentMode == GameMode::CANNON) {
+                    cannonGame.update(deltaTime, currentState, gameData);
+                }
                 
                 // Mettre à jour le titre de la fenêtre si le score ou les vies changent
                 if (gameData.lives != lastLives || gameData.score != lastScore) {
-                    window.setTitle("Break-Briks! - Score: " + std::to_string(gameData.score) + " - Vies: " + std::to_string(gameData.lives));
+                    std::string modeStr = (gameData.currentMode == GameMode::PADDLE) ? "RAQUETTE" : "CANON";
+                    window.setTitle("Break-Briks [" + modeStr + "] - Score: " + std::to_string(gameData.score) + " - Vies: " + std::to_string(gameData.lives));
                     lastLives = gameData.lives;
                     lastScore = gameData.score;
                 }
@@ -70,7 +94,11 @@ int main() {
                 if (currentState == GameState::VICTORY || currentState == GameState::GAME_OVER) {
                     // On garde le score final pour l'afficher
                     int finalScore = gameData.score;
-                    initializeGame(gameData, window);
+                    if (gameData.currentMode == GameMode::PADDLE) {
+                        initializeGame(gameData, window);
+                    } else {
+                        cannonGame.initialize(window);
+                    }
                     gameData.score = finalScore; // Rétablir le score pour l'écran de fin
                 }
                 break;
@@ -88,7 +116,11 @@ int main() {
                 menuManager.draw(window);
                 break;
             case GameState::PLAYING:
-                drawGame(window, gameData);
+                if (gameData.currentMode == GameMode::PADDLE) {
+                    drawGame(window, gameData);
+                } else if (gameData.currentMode == GameMode::CANNON) {
+                    cannonGame.draw(window, gameData);
+                }
                 break;
             case GameState::VICTORY:
                 endScreenManager.drawVictory(window, gameData);

@@ -4,8 +4,17 @@
 #include <SFML/Graphics.hpp>
 #include <vector>
 
+// Enum pour les différents modes de jeu
+enum class GameMode {
+    PADDLE,  // Mode raquette classique
+    CANNON   // Mode canon avec tir de projectiles
+};
+
 // Structure pour gérer les données du jeu
 struct GameData {
+    // Mode de jeu sélectionné
+    GameMode currentMode;
+    
     // Éléments du jeu
     sf::RectangleShape paddle;
     sf::CircleShape ball;

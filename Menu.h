@@ -3,6 +3,7 @@
 
 #include <SFML/Graphics.hpp>
 #include "GameStates.h"
+#include "GameData.h"  // Pour accéder à GameMode
 #include <vector>
 #include <cmath>
 #include <random> // Ajouté
@@ -26,17 +27,19 @@ class MenuManager {
 private:
     std::vector<Particle> particles;
     sf::Clock animationClock;
-    int selectedButton;
+    int selectedButton; // 0=RAQUETTE, 1=CANON, 2=QUITTER
     
-    // Éléments visuels
-    sf::RectangleShape startButton;
+    // Éléments visuels (3 boutons maintenant)
+    sf::RectangleShape raquetteButton;
+    sf::RectangleShape cannonButton;
     sf::RectangleShape quitButton;
     sf::RectangleShape background;
     
-    // Police et textes
+    // Police et textes (3 textes pour les boutons)
     sf::Font font;
     std::unique_ptr<sf::Text> titleText;
-    std::unique_ptr<sf::Text> jouerText;
+    std::unique_ptr<sf::Text> raquetteText;
+    std::unique_ptr<sf::Text> cannonText;
     std::unique_ptr<sf::Text> quitterText;
     std::unique_ptr<sf::Text> instructionText;
     bool fontLoaded;
@@ -50,7 +53,7 @@ private:
     
 public:
     MenuManager();
-    void handleEvents(sf::RenderWindow& window, const sf::Event& event, GameState& gameState);
+    void handleEvents(sf::RenderWindow& window, const sf::Event& event, GameState& gameState, GameMode& selectedGameMode);
     void update(float deltaTime);
     void draw(sf::RenderWindow& window);
     

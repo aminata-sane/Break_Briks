@@ -20,49 +20,63 @@ MenuManager::MenuManager()
         titleText->setCharacterSize(60);
         titleText->setFillColor(sf::Color(255, 215, 0)); // Couleur dorée
         
-        jouerText = std::make_unique<sf::Text>(font);
-        jouerText->setString("JOUER");
-        jouerText->setCharacterSize(28);
-        jouerText->setPosition(sf::Vector2f(360.f, 365.f));
+        raquetteText = std::make_unique<sf::Text>(font);
+        raquetteText->setString("RAQUETTE");
+        raquetteText->setCharacterSize(28);
+        raquetteText->setPosition(sf::Vector2f(335.f, 315.f));
+        
+        cannonText = std::make_unique<sf::Text>(font);
+        cannonText->setString("CANON");
+        cannonText->setCharacterSize(28);
+        cannonText->setPosition(sf::Vector2f(360.f, 395.f));
         
         quitterText = std::make_unique<sf::Text>(font);
         quitterText->setString("QUITTER");
         quitterText->setCharacterSize(28);
-        quitterText->setPosition(sf::Vector2f(340.f, 465.f));
+        quitterText->setPosition(sf::Vector2f(340.f, 475.f));
         
         instructionText = std::make_unique<sf::Text>(font);
         instructionText->setString("Utilisez les flèches pour naviguer, ENTREE pour valider");
         instructionText->setCharacterSize(16);
         instructionText->setFillColor(sf::Color::White);
-        instructionText->setPosition(sf::Vector2f(200.f, 530.f));
+        instructionText->setPosition(sf::Vector2f(200.f, 540.f));
         
     } else {
         fontLoaded = false;
         std::cout << "Impossible de charger arial.ttf, utilisation des rectangles de substitution" << std::endl;
     }
     
-    startButton.setSize(sf::Vector2f(200.f, 60.f));
-    startButton.setPosition(sf::Vector2f(300.f, 350.f));
-    startButton.setFillColor(sf::Color(70, 130, 180, 200));
+    // Configuration des 3 boutons
+    raquetteButton.setSize(sf::Vector2f(200.f, 60.f));
+    raquetteButton.setPosition(sf::Vector2f(300.f, 300.f));
+    raquetteButton.setFillColor(sf::Color(70, 130, 180, 200));
+    
+    cannonButton.setSize(sf::Vector2f(200.f, 60.f));
+    cannonButton.setPosition(sf::Vector2f(300.f, 380.f));
+    cannonButton.setFillColor(sf::Color(255, 140, 0, 200)); // Orange pour le canon
     
     quitButton.setSize(sf::Vector2f(200.f, 60.f));
-    quitButton.setPosition(sf::Vector2f(300.f, 450.f));
+    quitButton.setPosition(sf::Vector2f(300.f, 460.f));
     quitButton.setFillColor(sf::Color(220, 20, 60, 200));
     
     createParticles();
 }
 
-void MenuManager::handleEvents(sf::RenderWindow& window, const sf::Event& event, GameState& gameState) {
+void MenuManager::handleEvents(sf::RenderWindow& window, const sf::Event& event, GameState& gameState, GameMode& selectedGameMode) {
     if (event.is<sf::Event::KeyPressed>()) {
         auto keyEvent = event.getIf<sf::Event::KeyPressed>();
         if (keyEvent->code == sf::Keyboard::Key::Up || keyEvent->code == sf::Keyboard::Key::W) {
-            selectedButton = (selectedButton - 1 + 2) % 2;
+            selectedButton = (selectedButton - 1 + 3) % 3; // 3 boutons maintenant
         }
         else if (keyEvent->code == sf::Keyboard::Key::Down || keyEvent->code == sf::Keyboard::Key::S) {
-            selectedButton = (selectedButton + 1) % 2;
+            selectedButton = (selectedButton + 1) % 3; // 3 boutons maintenant
         }
         else if (keyEvent->code == sf::Keyboard::Key::Enter || keyEvent->code == sf::Keyboard::Key::Space) {
             if (selectedButton == 0) {
+                selectedGameMode = GameMode::PADDLE;
+                gameState = GameState::PLAYING;
+            } else if (selectedButton == 1) {
+                selectedGameMode = GameMode::CANNON;
                 gameState = GameState::PLAYING;
             } else {
                 window.close();
@@ -76,10 +90,12 @@ void MenuManager::handleEvents(sf::RenderWindow& window, const sf::Event& event,
     if (event.is<sf::Event::MouseMoved>()) {
         auto mouseEvent = event.getIf<sf::Event::MouseMoved>();
         sf::Vector2f mousePos(static_cast<float>(mouseEvent->position.x), static_cast<float>(mouseEvent->position.y));
-        if (startButton.getGlobalBounds().contains(mousePos)) {
+        if (raquetteButton.getGlobalBounds().contains(mousePos)) {
             selectedButton = 0;
-        } else if (quitButton.getGlobalBounds().contains(mousePos)) {
+        } else if (cannonButton.getGlobalBounds().contains(mousePos)) {
             selectedButton = 1;
+        } else if (quitButton.getGlobalBounds().contains(mousePos)) {
+            selectedButton = 2;
         }
     }
     
@@ -87,7 +103,11 @@ void MenuManager::handleEvents(sf::RenderWindow& window, const sf::Event& event,
         auto mouseEvent = event.getIf<sf::Event::MouseButtonPressed>();
         if (mouseEvent->button == sf::Mouse::Button::Left) {
             sf::Vector2f mousePos(static_cast<float>(mouseEvent->position.x), static_cast<float>(mouseEvent->position.y));
-            if (startButton.getGlobalBounds().contains(mousePos)) {
+            if (raquetteButton.getGlobalBounds().contains(mousePos)) {
+                selectedGameMode = GameMode::PADDLE;
+                gameState = GameState::PLAYING;
+            } else if (cannonButton.getGlobalBounds().contains(mousePos)) {
+                selectedGameMode = GameMode::CANNON;
                 gameState = GameState::PLAYING;
             } else if (quitButton.getGlobalBounds().contains(mousePos)) {
                 window.close();
@@ -233,41 +253,76 @@ void MenuManager::drawButtons(sf::RenderWindow& window) {
     float time = animationClock.getElapsedTime().asSeconds();
     
     // Dessiner les boutons de base
-    window.draw(startButton);
+    window.draw(raquetteButton);
+    window.draw(cannonButton);
     window.draw(quitButton);
     
     if (fontLoaded) {
-        // Utiliser les vrais textes
-        jouerText->setFillColor(selectedButton == 0 ? sf::Color::Yellow : sf::Color::White);
-        quitterText->setFillColor(selectedButton == 1 ? sf::Color::Yellow : sf::Color::White);
+        // Utiliser les vrais textes avec couleurs selon la sélection
+        raquetteText->setFillColor(selectedButton == 0 ? sf::Color::Yellow : sf::Color::White);
+        cannonText->setFillColor(selectedButton == 1 ? sf::Color::Yellow : sf::Color::White);
+        quitterText->setFillColor(selectedButton == 2 ? sf::Color::Yellow : sf::Color::White);
         
-        window.draw(*jouerText);
+        // Animation de rebond pour le bouton sélectionné
+        float bounce = 1.0f + 0.05f * std::sin(time * 6.0f);
+        if (selectedButton == 0) {
+            raquetteText->setScale(sf::Vector2f(bounce, bounce));
+            cannonText->setScale(sf::Vector2f(1.0f, 1.0f));
+            quitterText->setScale(sf::Vector2f(1.0f, 1.0f));
+        } else if (selectedButton == 1) {
+            raquetteText->setScale(sf::Vector2f(1.0f, 1.0f));
+            cannonText->setScale(sf::Vector2f(bounce, bounce));
+            quitterText->setScale(sf::Vector2f(1.0f, 1.0f));
+        } else {
+            raquetteText->setScale(sf::Vector2f(1.0f, 1.0f));
+            cannonText->setScale(sf::Vector2f(1.0f, 1.0f));
+            quitterText->setScale(sf::Vector2f(bounce, bounce));
+        }
+        
+        window.draw(*raquetteText);
+        window.draw(*cannonText);
         window.draw(*quitterText);
         window.draw(*instructionText);
     } else {
-        // Fallback : utiliser les rectangles
-        sf::RectangleShape jouerBg(sf::Vector2f(120.f, 40.f));
-        jouerBg.setPosition(sf::Vector2f(340.f, 355.f));
-        jouerBg.setFillColor(selectedButton == 0 ? sf::Color::Yellow : sf::Color::White);
-        window.draw(jouerBg);
+        // Fallback : utiliser les rectangles pour les 3 boutons
         
-        sf::RectangleShape jouerBorder(sf::Vector2f(120.f, 40.f));
-        jouerBorder.setPosition(sf::Vector2f(340.f, 355.f));
-        jouerBorder.setFillColor(sf::Color::Transparent);
-        jouerBorder.setOutlineThickness(3.f);
-        jouerBorder.setOutlineColor(selectedButton == 0 ? sf::Color::Red : sf::Color::Black);
-        window.draw(jouerBorder);
+        // Bouton RAQUETTE
+        sf::RectangleShape raquetteBg(sf::Vector2f(160.f, 40.f));
+        raquetteBg.setPosition(sf::Vector2f(320.f, 305.f));
+        raquetteBg.setFillColor(selectedButton == 0 ? sf::Color::Yellow : sf::Color::White);
+        window.draw(raquetteBg);
         
+        sf::RectangleShape raquetteBorder(sf::Vector2f(160.f, 40.f));
+        raquetteBorder.setPosition(sf::Vector2f(320.f, 305.f));
+        raquetteBorder.setFillColor(sf::Color::Transparent);
+        raquetteBorder.setOutlineThickness(3.f);
+        raquetteBorder.setOutlineColor(selectedButton == 0 ? sf::Color::Red : sf::Color::Black);
+        window.draw(raquetteBorder);
+        
+        // Bouton CANON
+        sf::RectangleShape cannonBg(sf::Vector2f(120.f, 40.f));
+        cannonBg.setPosition(sf::Vector2f(340.f, 385.f));
+        cannonBg.setFillColor(selectedButton == 1 ? sf::Color::Yellow : sf::Color(255, 140, 0));
+        window.draw(cannonBg);
+        
+        sf::RectangleShape cannonBorder(sf::Vector2f(120.f, 40.f));
+        cannonBorder.setPosition(sf::Vector2f(340.f, 385.f));
+        cannonBorder.setFillColor(sf::Color::Transparent);
+        cannonBorder.setOutlineThickness(3.f);
+        cannonBorder.setOutlineColor(selectedButton == 1 ? sf::Color::Red : sf::Color::Black);
+        window.draw(cannonBorder);
+        
+        // Bouton QUITTER
         sf::RectangleShape quitterBg(sf::Vector2f(140.f, 40.f));
-        quitterBg.setPosition(sf::Vector2f(330.f, 455.f));
-        quitterBg.setFillColor(selectedButton == 1 ? sf::Color::Yellow : sf::Color(180, 180, 180));
+        quitterBg.setPosition(sf::Vector2f(330.f, 465.f));
+        quitterBg.setFillColor(selectedButton == 2 ? sf::Color::Yellow : sf::Color(180, 180, 180));
         window.draw(quitterBg);
         
         sf::RectangleShape quitterBorder(sf::Vector2f(140.f, 40.f));
-        quitterBorder.setPosition(sf::Vector2f(330.f, 455.f));
+        quitterBorder.setPosition(sf::Vector2f(330.f, 465.f));
         quitterBorder.setFillColor(sf::Color::Transparent);
         quitterBorder.setOutlineThickness(3.f);
-        quitterBorder.setOutlineColor(selectedButton == 1 ? sf::Color::Red : sf::Color::Black);
+        quitterBorder.setOutlineColor(selectedButton == 2 ? sf::Color::Red : sf::Color::Black);
         window.draw(quitterBorder);
     }
     
@@ -279,9 +334,11 @@ void MenuManager::drawButtons(sf::RenderWindow& window) {
     selector.setScale(sf::Vector2f(pulse, pulse));
     
     if (selectedButton == 0) {
-        selector.setPosition(sf::Vector2f(280.f, 365.f));
+        selector.setPosition(sf::Vector2f(280.f, 315.f));
+    } else if (selectedButton == 1) {
+        selector.setPosition(sf::Vector2f(280.f, 395.f));
     } else {
-        selector.setPosition(sf::Vector2f(280.f, 465.f));
+        selector.setPosition(sf::Vector2f(280.f, 475.f));
     }
     window.draw(selector);
 }
