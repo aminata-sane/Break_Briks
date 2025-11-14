@@ -2,9 +2,10 @@
 #include <cmath>
 #include <algorithm>
 #include <iostream>
+#include <string> // Pour std::to_string
 
 // Fonction pour initialiser le jeu
-void initializeGame(GameData& game) {
+void initializeGame(GameData& game, sf::RenderWindow& window) {
     // Création de la raquette
     game.paddle.setSize(sf::Vector2f(100.f, 20.f));
     game.paddle.setFillColor(sf::Color::White);
@@ -44,50 +45,54 @@ void initializeGame(GameData& game) {
             game.bricks.push_back(brick);
         }
     }
+
+    // Mettre à jour le titre de la fenêtre
+    window.setTitle("Break-Briks! - Score: " + std::to_string(game.score) + " - Vies: " + std::to_string(game.lives));
 }
 
 // Fonction pour gérer les événements du jeu
 void handleGameEvents(sf::RenderWindow& window, const sf::Event& event, GameData& game) {
     if (event.is<sf::Event::KeyPressed>()) {
-        if (event.getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::A ||
-            event.getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::Left) {
+        auto keyEvent = event.getIf<sf::Event::KeyPressed>();
+        if (keyEvent->code == sf::Keyboard::Key::A || keyEvent->code == sf::Keyboard::Key::Left) {
             game.leftPressed = true;
         }
-        if (event.getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::D ||
-            event.getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::Right) {
+        if (keyEvent->code == sf::Keyboard::Key::D || keyEvent->code == sf::Keyboard::Key::Right) {
             game.rightPressed = true;
         }
     }
     else if (event.is<sf::Event::KeyReleased>()) {
-        if (event.getIf<sf::Event::KeyReleased>()->code == sf::Keyboard::Key::A ||
-            event.getIf<sf::Event::KeyReleased>()->code == sf::Keyboard::Key::Left) {
+        auto keyEvent = event.getIf<sf::Event::KeyReleased>();
+        if (keyEvent->code == sf::Keyboard::Key::A || keyEvent->code == sf::Keyboard::Key::Left) {
             game.leftPressed = false;
         }
-        if (event.getIf<sf::Event::KeyReleased>()->code == sf::Keyboard::Key::D ||
-            event.getIf<sf::Event::KeyReleased>()->code == sf::Keyboard::Key::Right) {
+        if (keyEvent->code == sf::Keyboard::Key::D || keyEvent->code == sf::Keyboard::Key::Right) {
             game.rightPressed = false;
         }
     }
 }
 
 // Fonction pour mettre à jour la logique du jeu
-void updateGame(GameData& game, float deltaTime, sf::RenderWindow& window, GameState& gameState) {
+void updateGame(GameData& game, float deltaTime, GameState& gameState) {
     // Contrôle de la raquette
     sf::Vector2f paddlePos = game.paddle.getPosition();
     if (game.leftPressed && paddlePos.x > 0) {
         game.paddle.move(sf::Vector2f(-game.paddleSpeed * deltaTime, 0));
     }
-    if (game.rightPressed && paddlePos.x < game.WINDOW_WIDTH - 100) {
+    // Correction: utiliser getSize() au lieu de 100
+    if (game.rightPressed && paddlePos.x < game.WINDOW_WIDTH - game.paddle.getSize().x) {
         game.paddle.move(sf::Vector2f(game.paddleSpeed * deltaTime, 0));
     }
     
     // Mouvement de la balle
-    game.ball.move(sf::Vector2f(game.ballVelocity.x * deltaTime, game.ballVelocity.y * deltaTime));
+    game.ball.move(game.ballVelocity * deltaTime);
     
     // Rebonds de la balle sur les bords
     sf::Vector2f ballPos = game.ball.getPosition();
+    float ballRadius = game.ball.getRadius();
     
-    if (ballPos.x <= 0 || ballPos.x >= game.WINDOW_WIDTH - 20) {
+    // Correction: utiliser (radius * 2) au lieu de 20
+    if (ballPos.x <= 0 || ballPos.x >= game.WINDOW_WIDTH - (ballRadius * 2)) {
         game.ballVelocity.x = -game.ballVelocity.x;
     }
     
@@ -99,6 +104,7 @@ void updateGame(GameData& game, float deltaTime, sf::RenderWindow& window, GameS
     sf::FloatRect ballBounds = game.ball.getGlobalBounds();
     sf::FloatRect paddleBounds = game.paddle.getGlobalBounds();
     
+    // Vérifier intersection
     if (ballBounds.findIntersection(paddleBounds) && game.ballVelocity.y > 0) {
         float paddleCenter = paddleBounds.position.x + paddleBounds.size.x / 2;
         float ballCenter = ballBounds.position.x + ballBounds.size.x / 2;
@@ -109,33 +115,25 @@ void updateGame(GameData& game, float deltaTime, sf::RenderWindow& window, GameS
         float speed = std::sqrt(game.ballVelocity.x * game.ballVelocity.x + game.ballVelocity.y * game.ballVelocity.y);
         game.ballVelocity.x = hitPosition * speed * 0.7f;
         game.ballVelocity.y = -std::abs(game.ballVelocity.y);
+        
+        // S'assurer que la balle est au-dessus de la raquette après le rebond
+        game.ball.setPosition(sf::Vector2f(ballPos.x, paddleBounds.position.y - ballBounds.size.y - 1.f));
     }
     
     // Collision balle-briques
     for (auto it = game.bricks.begin(); it != game.bricks.end(); ) {
         sf::FloatRect brickBounds = it->getGlobalBounds();
         
+        // Vérifier intersection
         if (ballBounds.findIntersection(brickBounds)) {
-            float ballCenterX = ballBounds.position.x + ballBounds.size.x / 2;
-            float ballCenterY = ballBounds.position.y + ballBounds.size.y / 2;
-            float brickCenterX = brickBounds.position.x + brickBounds.size.x / 2;
-            float brickCenterY = brickBounds.position.y + brickBounds.size.y / 2;
-            
-            float deltaX = ballCenterX - brickCenterX;
-            float deltaY = ballCenterY - brickCenterY;
-            
-            if (std::abs(deltaX / brickBounds.size.x) > std::abs(deltaY / brickBounds.size.y)) {
-                game.ballVelocity.x = -game.ballVelocity.x;
-            } else {
-                game.ballVelocity.y = -game.ballVelocity.y;
-            }
+            // Logique de rebond simple (inverser Y)
+            game.ballVelocity.y = -game.ballVelocity.y;
             
             it = game.bricks.erase(it);
             game.score += 10;
+            // Pas de mise à jour du titre ici, c'est trop fréquent
             
-            window.setTitle("Break the Bricks! - Score: " + std::to_string(game.score) + " - Vies: " + std::to_string(game.lives));
-            
-            break;
+            break; 
         } else {
             ++it;
         }
@@ -150,20 +148,26 @@ void updateGame(GameData& game, float deltaTime, sf::RenderWindow& window, GameS
     if (ballPos.y >= game.WINDOW_HEIGHT) {
         game.lives--;
         if (game.lives <= 0) {
-            gameState = GameState::DEFEAT;
+            gameState = GameState::GAME_OVER;
         } else {
             // Repositionner la balle
             game.ball.setPosition(sf::Vector2f(game.WINDOW_WIDTH / 2 - 10, game.WINDOW_HEIGHT / 2));
             game.ballVelocity = sf::Vector2f(200.f, -200.f);
-            window.setTitle("Break the Bricks! - Score: " + std::to_string(game.score) + " - Vies: " + std::to_string(game.lives));
+            // On met à jour le titre de la fenêtre SEULEMENT ici (et à l'init)
+            // (on a besoin de la window pour ça... on va le faire dans le main)
         }
     }
 }
 
 // Fonction pour dessiner le jeu
 void drawGame(sf::RenderWindow& window, const GameData& game) {
-    window.clear(sf::Color::Blue);
+    // **Correction**
+    // 1. Dessiner le fond d'écran
+    sf::RectangleShape background(sf::Vector2f(GameData::WINDOW_WIDTH, GameData::WINDOW_HEIGHT));
+    background.setFillColor(sf::Color(0, 0, 50)); // Bleu nuit
+    window.draw(background);
     
+    // 2. Dessiner les éléments
     for (const auto& brick : game.bricks) {
         window.draw(brick);
     }
@@ -171,31 +175,5 @@ void drawGame(sf::RenderWindow& window, const GameData& game) {
     window.draw(game.paddle);
     window.draw(game.ball);
     
-    window.display();
-}
-
-// Fonction pour gérer les événements du game over
-void handleGameOverEvents(sf::RenderWindow& window, const sf::Event& event, GameState& gameState, GameData& game) {
-    if (event.is<sf::Event::KeyPressed>()) {
-        if (event.getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::R) {
-            initializeGame(game);
-            gameState = GameState::PLAYING;
-        }
-        else if (event.getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::M) {
-            gameState = GameState::MENU;
-        }
-        else if (event.getIf<sf::Event::KeyPressed>()->code == sf::Keyboard::Key::Escape) {
-            window.close();
-        }
-    }
-}
-
-// Fonction pour dessiner l'écran de game over
-void drawGameOver(sf::RenderWindow& window, const GameData& game) {
-    window.clear(sf::Color::Black);
-    
-    // Pour l'instant, un écran simple
-    // TODO: Améliorer l'affichage du game over avec du texte
-    
-    window.display();
+    // 3. NE PAS appeler clear() ou display()
 }

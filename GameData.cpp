@@ -1,5 +1,4 @@
 #include "GameData.h"
-#include <SFML/Graphics.hpp>
 
 // Définition des constantes statiques
 const float GameData::paddleSpeed = 300.0f;

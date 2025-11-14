@@ -5,9 +5,8 @@
 enum class GameState {
     MENU,
     PLAYING,
-    GAME_OVER,
     VICTORY,
-    DEFEAT
+    GAME_OVER
 };
 
 #endif // GAMESTATES_H

@@ -1,92 +1,105 @@
 #include <SFML/Graphics.hpp>
 #include "GameStates.h"
-#include "GameData.h"
-#include "Game.h"
 #include "Menu.h"
+#include "Game.h"
 #include "EndScreen.h"
+#include "GameData.h"
 
 int main() {
-    // Configuration de la fenêtre
-    const int WINDOW_WIDTH = 800;
-    const int WINDOW_HEIGHT = 600;
-    sf::RenderWindow window(sf::VideoMode({WINDOW_WIDTH, WINDOW_HEIGHT}), "Break the Bricks!");
-    
-    // État du jeu et données
-    GameState gameState = GameState::MENU;
-    GameData game;
-    
-    // Initialiser le jeu
-    initializeGame(game);
-    
-    // Horloge pour gérer le temps
+    // Création de la fenêtre
+    sf::RenderWindow window(sf::VideoMode({GameData::WINDOW_WIDTH, GameData::WINDOW_HEIGHT}), "Break-Briks!");
+    window.setFramerateLimit(60);
+
+    // Initialisation des gestionnaires (en local, pas en global)
+    MenuManager menuManager;
+    EndScreenManager endScreenManager;
+    GameData gameData; // Contient toutes les données du jeu
+
+    // Initialisation de l'état du jeu
+    GameState currentState = GameState::MENU;
     sf::Clock clock;
     
+    // Initialiser le jeu une première fois pour le titre
+    initializeGame(gameData, window);
+    int lastLives = gameData.lives;
+    int lastScore = gameData.score;
+
+    // Boucle de jeu principale
     while (window.isOpen()) {
-        // Calcul du temps écoulé
+        // Gérer le temps
         float deltaTime = clock.restart().asSeconds();
-        
-        // Gestion des événements
+
+        // 1. GESTION DES ÉVÉNEMENTS
         while (auto event = window.pollEvent()) {
             if (event->is<sf::Event::Closed>()) {
                 window.close();
             }
-            else {
-                // Gérer les événements selon l'état du jeu
-                switch (gameState) {
-                    case GameState::MENU:
-                        handleMenuEvents(window, *event, gameState);
-                        break;
-                    case GameState::PLAYING:
-                        handleGameEvents(window, *event, game);
-                        break;
-                    case GameState::VICTORY:
-                    case GameState::DEFEAT:
-                        handleEndScreenEvents(window, *event, gameState, game, gameState);
-                        break;
-                    case GameState::GAME_OVER:
-                        // Ancienne compatibilité (peut être supprimée)
-                        handleGameOverEvents(window, *event, gameState, game);
-                        break;
-                }
+
+            // Transmettre les événements au bon gestionnaire
+            switch (currentState) {
+                case GameState::MENU:
+                    menuManager.handleEvents(window, *event, currentState);
+                    break;
+                case GameState::PLAYING:
+                    handleGameEvents(window, *event, gameData);
+                    break;
+                case GameState::VICTORY:
+                case GameState::GAME_OVER:
+                    endScreenManager.handleEvents(window, *event, currentState, gameData);
+                    break;
             }
         }
-        
-        // Mettre à jour selon l'état du jeu
-        switch (gameState) {
+
+        // 2. MISE À JOUR DE LA LOGIQUE
+        switch (currentState) {
             case GameState::MENU:
-                updateMenu(deltaTime);
+                menuManager.update(deltaTime);
                 break;
             case GameState::PLAYING:
-                updateGame(game, deltaTime, window, gameState);
+                updateGame(gameData, deltaTime, currentState);
+                
+                // Mettre à jour le titre de la fenêtre si le score ou les vies changent
+                if (gameData.lives != lastLives || gameData.score != lastScore) {
+                    window.setTitle("Break-Briks! - Score: " + std::to_string(gameData.score) + " - Vies: " + std::to_string(gameData.lives));
+                    lastLives = gameData.lives;
+                    lastScore = gameData.score;
+                }
+
+                // Si le jeu vient de passer à la victoire/défaite, 
+                // on réinitialise le jeu en arrière-plan
+                if (currentState == GameState::VICTORY || currentState == GameState::GAME_OVER) {
+                    // On garde le score final pour l'afficher
+                    int finalScore = gameData.score;
+                    initializeGame(gameData, window);
+                    gameData.score = finalScore; // Rétablir le score pour l'écran de fin
+                }
                 break;
             case GameState::VICTORY:
-            case GameState::DEFEAT:
-                updateEndScreen(deltaTime);
-                break;
             case GameState::GAME_OVER:
-                // Ancienne compatibilité
+                endScreenManager.update(deltaTime);
                 break;
         }
-        
-        // Dessiner selon l'état du jeu
-        switch (gameState) {
+
+        // 3. AFFICHAGE
+        window.clear(sf::Color::Black); // Nettoyer UNE SEULE FOIS
+
+        switch (currentState) {
             case GameState::MENU:
-                drawMenu(window);
+                menuManager.draw(window);
                 break;
             case GameState::PLAYING:
-                drawGame(window, game);
+                drawGame(window, gameData);
                 break;
             case GameState::VICTORY:
-                drawVictoryScreen(window, game);
-                break;
-            case GameState::DEFEAT:
-                drawDefeatScreen(window, game);
+                endScreenManager.drawVictory(window, gameData);
                 break;
             case GameState::GAME_OVER:
-                // Ancienne compatibilité
-                drawGameOver(window, game);
+                endScreenManager.drawDefeat(window, gameData);
                 break;
         }
+
+        window.display(); // Afficher UNE SEULE FOIS
     }
+
     return 0;
 }

@@ -3,9 +3,11 @@
 
 #include <SFML/Graphics.hpp>
 #include "GameStates.h"
-#include "GameData.h"
 #include <vector>
 #include <cmath>
+#include <random> // Ajouté
+#include <cstdint> // Ajouté
+#include <memory>
 
 // Structure pour les particules d'animation
 struct Particle {
@@ -31,16 +33,20 @@ private:
     sf::RectangleShape quitButton;
     sf::RectangleShape background;
     
-    // Textes
+    // Police et textes
     sf::Font font;
-    sf::Text titleText;
-    sf::Text raquetteText;
-    sf::Text canonText;
+    std::unique_ptr<sf::Text> titleText;
+    std::unique_ptr<sf::Text> jouerText;
+    std::unique_ptr<sf::Text> quitterText;
+    std::unique_ptr<sf::Text> instructionText;
     bool fontLoaded;
     
     // Animation du titre
     float titleScale;
     float titleRotation;
+
+    // Générateur de nombres aléatoires
+    std::mt19937 gen;
     
 public:
     MenuManager();
@@ -57,12 +63,6 @@ private:
     sf::Color getGradientColor(float t);
 };
 
-// Fonctions pour la compatibilité
-void handleMenuEvents(sf::RenderWindow& window, const sf::Event& event, GameState& gameState);
-void updateMenu(float deltaTime);
-void drawMenu(sf::RenderWindow& window);
-
-// Instance globale du gestionnaire de menu
-extern MenuManager menuManager;
+// **Suppression des fonctions de compatibilité et de l'instance globale**
 
 #endif // MENU_H
