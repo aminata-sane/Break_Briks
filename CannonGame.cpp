@@ -22,6 +22,17 @@ void CannonGame::initialize(sf::RenderWindow& window) {
     // Créer la grille de briques
     createBricks();
     
+    // Initialiser le HUD Score
+    if (!hudFont.openFromFile("arial.ttf")) {
+        std::cerr << "Erreur : Impossible de charger arial.ttf pour le HUD" << std::endl;
+    }
+    hudScoreText = std::make_unique<sf::Text>(hudFont);
+    hudScoreText->setCharacterSize(28);
+    hudScoreText->setFillColor(sf::Color::Cyan);
+    hudScoreText->setPosition(sf::Vector2f(15.f, 15.f));
+    hudScoreText->setOutlineThickness(2.f);
+    hudScoreText->setOutlineColor(sf::Color::Black);
+    
     std::cout << "Mode Canon initialisé avec " << bricks.size() << " briques !" << std::endl;
 }
 
@@ -143,6 +154,11 @@ void CannonGame::update(float deltaTime, GameState& gameState, GameData& gameDat
     updateBalls(deltaTime, gameState);
     checkCollisions(gameData, gameState);
     removeDestroyedObjects();
+    
+    // Mettre à jour le HUD Score en temps réel
+    if (hudScoreText) {
+        hudScoreText->setString("Score: " + std::to_string(gameData.score));
+    }
     
     // Vérifier la victoire
     if (isVictorious()) {
@@ -391,6 +407,11 @@ void CannonGame::draw(sf::RenderWindow& window, const GameData& gameData) {
     // Dessiner les particules d'explosion
     for (auto& p : particles) {
         window.draw(p.shape);
+    }
+    
+    // Dessiner le HUD Score en haut à gauche
+    if (hudScoreText) {
+        window.draw(*hudScoreText);
     }
 }
 

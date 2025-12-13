@@ -6,6 +6,7 @@
 #include "GameData.h"
 #include <vector>
 #include <cmath>
+#include <memory>
 
 // Structure pour les projectiles (balles)
 struct Ball {
@@ -175,6 +176,10 @@ private:
     sf::View view;
     float shakeTimer = 0.0f;
     float shakeIntensity = 5.0f;
+    
+    // HUD - Affichage du score en temps réel
+    sf::Font hudFont;
+    std::unique_ptr<sf::Text> hudScoreText;
     
     void createBricks();
     void updateBalls(float deltaTime, GameState& gameState);
