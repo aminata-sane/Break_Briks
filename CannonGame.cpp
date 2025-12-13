@@ -50,8 +50,16 @@ void CannonGame::createBricks() {
             // Varier les points de vie selon la rangée
             int hitPoints = 1 + (row / 2); // 1-4 points de vie
             bricks.emplace_back(position, hitPoints);
+            
+            // 10% de chance qu'une brique soit TNT
+            if ((rand() % 100) < 10) {
+                bricks.back().isTNT = true;
+                bricks.back().updateColor(); // Appliquer la couleur TNT
+            }
         }
     }
+    
+    std::cout << "Grille créée avec " << bricks.size() << " briques (10% TNT)" << std::endl;
 }
 
 void CannonGame::handleEvents(sf::RenderWindow& window, const sf::Event& event, GameData& gameData) {
@@ -184,7 +192,8 @@ void CannonGame::checkCollisions(GameData& gameData, GameState& gameState) {
         if (!projectile.active) continue;
         
         // Vérifier les collisions avec les briques
-        for (auto& brick : bricks) {
+        for (int i = 0; i < bricks.size(); i++) {
+            auto& brick = bricks[i];
             if (brick.destroyed) continue;
             
             if (brick.shape.getGlobalBounds().findIntersection(projectile.shape.getGlobalBounds())) {
@@ -192,12 +201,66 @@ void CannonGame::checkCollisions(GameData& gameData, GameState& gameState) {
                 brick.takeDamage();
                 gameData.score += 10;
                 
-                // Déclencher le Screen Shake !
-                shakeTimer = 0.2f; // Tremble pendant 0.2 secondes
-                
                 // Créer une explosion à la position de la brique
                 sf::Vector2f brickPos = brick.shape.getPosition() + brick.shape.getSize() / 2.f;
                 createExplosion(brickPos.x, brickPos.y, brick.shape.getFillColor());
+                
+                // Si c'est une brique TNT, déclencher une chaîne d'explosions !
+                if (brick.isTNT && brick.destroyed) {
+                    // Screen Shake plus violent !
+                    shakeTimer = 0.5f; // Plus long
+                    shakeIntensity = 10.0f; // Plus intense
+                    
+                    std::cout << "🔥 EXPLOSION TNT !" << std::endl;
+                    
+                    // Chercher et détruire les briques adjacentes (3x3 autour)
+                    const int cols = 10; // Nombre de colonnes de la grille
+                    const int rows = 8;  // Nombre de lignes
+                    const float brickWidth = 75.f + 5.f; // Largeur + espacement
+                    const float brickHeight = 25.f + 5.f; // Hauteur + espacement
+                    
+                    sf::Vector2f brickGridPos = brick.shape.getPosition();
+                    int brickCol = static_cast<int>((brickGridPos.x - 50.f) / brickWidth); // Position approximative
+                    int brickRow = static_cast<int>((brickGridPos.y - 50.f) / brickHeight);
+                    
+                    // Détruire les voisins (3x3)
+                    for (int dx = -1; dx <= 1; dx++) {
+                        for (int dy = -1; dy <= 1; dy++) {
+                            int neighborCol = brickCol + dx;
+                            int neighborRow = brickRow + dy;
+                            
+                            // Vérifier les limites
+                            if (neighborCol >= 0 && neighborCol < cols && neighborRow >= 0 && neighborRow < rows) {
+                                // Chercher la brique adjacente
+                                for (int j = 0; j < bricks.size(); j++) {
+                                    if (i == j || bricks[j].destroyed) continue;
+                                    
+                                    // Vérifier si elle est proche (dans la zone 3x3)
+                                    float dist = std::sqrt(
+                                        std::pow(bricks[j].shape.getPosition().x - brickGridPos.x, 2) +
+                                        std::pow(bricks[j].shape.getPosition().y - brickGridPos.y, 2)
+                                    );
+                                    
+                                    if (dist < 120.f) { // Rayon d'explosion
+                                        // Explosion en chaîne !
+                                        bricks[j].destroyed = true;
+                                        gameData.score += 20; // Bonus pour chaîne
+                                        
+                                        // Créer une explosion pour chaque voisin aussi
+                                        sf::Vector2f neighborPos = bricks[j].shape.getPosition() + bricks[j].shape.getSize() / 2.f;
+                                        createExplosion(neighborPos.x, neighborPos.y, bricks[j].shape.getFillColor());
+                                        
+                                        std::cout << "  → Brique voisine détruite en chaîne !" << std::endl;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Shake normal pour les briques non-TNT
+                    shakeTimer = 0.2f;
+                    shakeIntensity = 5.0f;
+                }
                 
                 // Effet de rebond du projectile
                 sf::Vector2f brickCenter = brick.shape.getPosition() + brick.shape.getSize() / 2.f;

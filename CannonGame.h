@@ -42,9 +42,10 @@ struct CannonBrick {
     int hitPoints;
     int maxHitPoints;
     bool destroyed;
+    bool isTNT;  // Brique explosive
     
     CannonBrick(sf::Vector2f position, int hp = 3) 
-        : hitPoints(hp), maxHitPoints(hp), destroyed(false) {
+        : hitPoints(hp), maxHitPoints(hp), destroyed(false), isTNT(false) {
         shape.setSize(sf::Vector2f(75.f, 25.f));
         shape.setPosition(position);
         updateColor();
@@ -61,20 +62,27 @@ struct CannonBrick {
     }
     
     void updateColor() {
-        // Couleur selon les points de vie
-        if (hitPoints >= maxHitPoints) {
-            shape.setFillColor(sf::Color::Red);      // Pleine vie
-        } else if (hitPoints >= maxHitPoints * 0.66f) {
-            shape.setFillColor(sf::Color(255, 165, 0)); // Orange
-        } else if (hitPoints >= maxHitPoints * 0.33f) {
-            shape.setFillColor(sf::Color::Yellow);   // Jaune
-        } else if (hitPoints > 0) {
-            shape.setFillColor(sf::Color::Green);    // Presque détruite
+        // Les briques TNT sont toujours rouge vif
+        if (isTNT) {
+            shape.setFillColor(sf::Color(255, 50, 50)); // Rouge vif
+            shape.setOutlineThickness(2.f);
+            shape.setOutlineColor(sf::Color(255, 200, 0)); // Contour doré
+        } else {
+            // Couleur selon les points de vie
+            if (hitPoints >= maxHitPoints) {
+                shape.setFillColor(sf::Color::Blue);      // Bleu pour les normales
+            } else if (hitPoints >= maxHitPoints * 0.66f) {
+                shape.setFillColor(sf::Color(0, 100, 255)); // Bleu clair
+            } else if (hitPoints >= maxHitPoints * 0.33f) {
+                shape.setFillColor(sf::Color(100, 200, 255));   // Bleu très clair
+            } else if (hitPoints > 0) {
+                shape.setFillColor(sf::Color(150, 230, 255));    // Quasi bleu blanc
+            }
+            
+            // Contour noir pour la visibilité
+            shape.setOutlineThickness(1.f);
+            shape.setOutlineColor(sf::Color::Black);
         }
-        
-        // Contour noir pour la visibilité
-        shape.setOutlineThickness(1.f);
-        shape.setOutlineColor(sf::Color::Black);
     }
 };
 
@@ -157,7 +165,7 @@ private:
     // Variables pour le Screen Shake (tremblement d'écran)
     sf::View view;
     float shakeTimer = 0.0f;
-    const float shakeIntensity = 5.0f;
+    float shakeIntensity = 5.0f;
     
     void createBricks();
     void updateProjectiles(float deltaTime, GameState& gameState);
