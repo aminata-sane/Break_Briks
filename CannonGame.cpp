@@ -1,5 +1,6 @@
 #include "CannonGame.h"
 #include <iostream>
+#include <cstdint>
 
 CannonGame::CannonGame() {
     // Le constructeur de base, l'initialisation se fait dans initialize()
@@ -115,6 +116,23 @@ void CannonGame::update(float deltaTime, GameState& gameState, GameData& gameDat
         window.setView(window.getDefaultView());
     }
     
+    // Gestion des particules d'explosion
+    for (int i = 0; i < particles.size(); i++) {
+        particles[i].shape.move(particles[i].velocity * deltaTime);
+        particles[i].lifetime -= deltaTime;
+        
+        // Fade out : réduit la transparence au fil du temps
+        sf::Color c = particles[i].shape.getFillColor();
+        c.a = static_cast<std::uint8_t>(255 * particles[i].lifetime);
+        particles[i].shape.setFillColor(c);
+        
+        // Supprime les particules mortes
+        if (particles[i].lifetime <= 0) {
+            particles.erase(particles.begin() + i);
+            i--;
+        }
+    }
+    
     updateProjectiles(deltaTime, gameState);
     checkCollisions(gameData, gameState);
     removeDestroyedObjects();
@@ -176,6 +194,10 @@ void CannonGame::checkCollisions(GameData& gameData, GameState& gameState) {
                 
                 // Déclencher le Screen Shake !
                 shakeTimer = 0.2f; // Tremble pendant 0.2 secondes
+                
+                // Créer une explosion à la position de la brique
+                sf::Vector2f brickPos = brick.shape.getPosition() + brick.shape.getSize() / 2.f;
+                createExplosion(brickPos.x, brickPos.y, brick.shape.getFillColor());
                 
                 // Effet de rebond du projectile
                 sf::Vector2f brickCenter = brick.shape.getPosition() + brick.shape.getSize() / 2.f;
@@ -264,4 +286,32 @@ void CannonGame::draw(sf::RenderWindow& window, const GameData& gameData) {
         sf::Vertex{cannonPos + aimDirection, sf::Color(255, 255, 255, 40)}
     };
     window.draw(aimLine, 2, sf::PrimitiveType::Lines);
+    
+    // Dessiner les particules d'explosion
+    for (auto& p : particles) {
+        window.draw(p.shape);
+    }
+}
+
+void CannonGame::createExplosion(float x, float y, sf::Color color) {
+    for (int i = 0; i < 15; i++) { // 15 petits morceaux
+        CannonParticle p(
+            sf::Vector2f(x, y),
+            sf::Vector2f(0.f, 0.f),
+            1.0f, // Durée de vie
+            color
+        );
+        
+        p.shape.setSize(sf::Vector2f(5.f, 5.f)); // Taille des morceaux
+        
+        // Vitesse aléatoire dans toutes les directions
+        float angle = (rand() % 360) * M_PI / 180.0f;
+        float speed = (rand() % 200 + 100);
+        p.velocity = sf::Vector2f(
+            speed * std::cos(angle),
+            speed * std::sin(angle)
+        );
+        
+        particles.push_back(p);
+    }
 }

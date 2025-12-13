@@ -22,6 +22,20 @@ struct Projectile {
     }
 };
 
+// Structure pour les particules d'explosion
+struct CannonParticle {
+    sf::RectangleShape shape;
+    sf::Vector2f velocity;
+    float lifetime; // Durée de vie restante
+    
+    CannonParticle(sf::Vector2f position, sf::Vector2f vel, float life, sf::Color color)
+        : velocity(vel), lifetime(life) {
+        shape.setSize(sf::Vector2f(3.f, 3.f));
+        shape.setPosition(position);
+        shape.setFillColor(color);
+    }
+};
+
 // Structure pour les briques avec vie
 struct CannonBrick {
     sf::RectangleShape shape;
@@ -134,6 +148,7 @@ private:
     Cannon cannon;
     std::vector<Projectile> projectiles;
     std::vector<CannonBrick> bricks;
+    std::vector<CannonParticle> particles; // Liste des particules d'explosion
     
     sf::Clock shootCooldown;
     const float PROJECTILE_SPEED = 400.f;
@@ -148,6 +163,7 @@ private:
     void updateProjectiles(float deltaTime, GameState& gameState);
     void checkCollisions(GameData& gameData, GameState& gameState);
     void removeDestroyedObjects();
+    void createExplosion(float x, float y, sf::Color color);
     bool isVictorious() const;
 };
 
