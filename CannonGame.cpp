@@ -14,7 +14,7 @@ void CannonGame::initialize(sf::RenderWindow& window) {
     cannon = Cannon();
     
     // Vider les projectiles
-    projectiles.clear();
+    balls.clear();
     
     // Réinitialiser le shake
     shakeTimer = 0.0f;
@@ -73,27 +73,19 @@ void CannonGame::handleEvents(sf::RenderWindow& window, const sf::Event& event, 
     if (event.is<sf::Event::MouseButtonPressed>()) {
         auto mouseEvent = event.getIf<sf::Event::MouseButtonPressed>();
         if (mouseEvent->button == sf::Mouse::Button::Left && cannon.canShoot) {
-            // Tirer un projectile si aucun n'est actif
-            bool hasActiveProjectile = false;
-            for (const auto& projectile : projectiles) {
-                if (projectile.active) {
-                    hasActiveProjectile = true;
-                    break;
-                }
-            }
-            
-            if (!hasActiveProjectile && shootCooldown.getElapsedTime().asSeconds() > SHOOT_DELAY) {
-                // Créer un nouveau projectile
+            // Permettre jusqu'à 3 balles en même temps (Invasion de Balles !)
+            if (balls.size() < 3 && shootCooldown.getElapsedTime().asSeconds() > SHOOT_DELAY) {
+                // Créer une nouvelle balle
                 sf::Vector2f startPos = cannon.getBarrelEnd();
                 sf::Vector2f velocity(
                     PROJECTILE_SPEED * std::cos(cannon.angle),
                     PROJECTILE_SPEED * std::sin(cannon.angle)
                 );
                 
-                projectiles.emplace_back(startPos, velocity);
+                balls.emplace_back(startPos, velocity);
                 shootCooldown.restart();
                 
-                std::cout << "Projectile tiré à l'angle " << (cannon.angle * 180.f / M_PI) << "°" << std::endl;
+                std::cout << "🔵 Balle " << balls.size() << " tirée à l'angle " << (cannon.angle * 180.f / M_PI) << "°" << std::endl;
             }
         }
     }
@@ -141,7 +133,7 @@ void CannonGame::update(float deltaTime, GameState& gameState, GameData& gameDat
         }
     }
     
-    updateProjectiles(deltaTime, gameState);
+    updateBalls(deltaTime, gameState);
     checkCollisions(gameData, gameState);
     removeDestroyedObjects();
     
@@ -151,52 +143,52 @@ void CannonGame::update(float deltaTime, GameState& gameState, GameData& gameDat
     }
 }
 
-void CannonGame::updateProjectiles(float deltaTime, GameState& gameState) {
-    for (auto& projectile : projectiles) {
-        if (!projectile.active) continue;
+void CannonGame::updateBalls(float deltaTime, GameState& gameState) {
+    for (auto& ball : balls) {
+        if (!ball.active) continue;
         
         // Mettre à jour la position
-        sf::Vector2f newPos = projectile.shape.getPosition();
-        newPos += projectile.velocity * deltaTime;
-        projectile.shape.setPosition(newPos);
+        sf::Vector2f newPos = ball.shape.getPosition();
+        newPos += ball.velocity * deltaTime;
+        ball.shape.setPosition(newPos);
         
         // Vérifier les rebonds sur les murs
-        if (newPos.x <= projectile.shape.getRadius() || newPos.x >= 800.f - projectile.shape.getRadius()) {
-            projectile.velocity.x = -projectile.velocity.x;
+        if (newPos.x <= ball.shape.getRadius() || newPos.x >= 800.f - ball.shape.getRadius()) {
+            ball.velocity.x = -ball.velocity.x;
             // Repositionner pour éviter les chevauchements
-            if (newPos.x <= projectile.shape.getRadius()) {
-                newPos.x = projectile.shape.getRadius();
+            if (newPos.x <= ball.shape.getRadius()) {
+                newPos.x = ball.shape.getRadius();
             } else {
-                newPos.x = 800.f - projectile.shape.getRadius();
+                newPos.x = 800.f - ball.shape.getRadius();
             }
-            projectile.shape.setPosition(newPos);
+            ball.shape.setPosition(newPos);
         }
         
         // Rebond sur le mur du haut
-        if (newPos.y <= projectile.shape.getRadius()) {
-            projectile.velocity.y = -projectile.velocity.y;
-            newPos.y = projectile.shape.getRadius();
-            projectile.shape.setPosition(newPos);
+        if (newPos.y <= ball.shape.getRadius()) {
+            ball.velocity.y = -ball.velocity.y;
+            newPos.y = ball.shape.getRadius();
+            ball.shape.setPosition(newPos);
         }
         
-        // Disparaît si sort par le bas
-        if (newPos.y >= 600.f) {
-            projectile.active = false;
-            cannon.canShoot = true; // Permettre un nouveau tir
+        // Disparaît si sort par le bas (et décrémenter la durée de vie)
+        ball.lifetime -= deltaTime;
+        if (newPos.y >= 600.f || ball.lifetime <= 0.f) {
+            ball.active = false;
         }
     }
 }
 
 void CannonGame::checkCollisions(GameData& gameData, GameState& gameState) {
-    for (auto& projectile : projectiles) {
-        if (!projectile.active) continue;
+    for (auto& ball : balls) {
+        if (!ball.active) continue;
         
         // Vérifier les collisions avec les briques
         for (int i = 0; i < bricks.size(); i++) {
             auto& brick = bricks[i];
             if (brick.destroyed) continue;
             
-            if (brick.shape.getGlobalBounds().findIntersection(projectile.shape.getGlobalBounds())) {
+            if (brick.shape.getGlobalBounds().findIntersection(ball.shape.getGlobalBounds())) {
                 // Collision détectée
                 brick.takeDamage();
                 gameData.score += 10;
@@ -262,16 +254,16 @@ void CannonGame::checkCollisions(GameData& gameData, GameState& gameState) {
                     shakeIntensity = 5.0f;
                 }
                 
-                // Effet de rebond du projectile
+                // Effet de rebond de la balle
                 sf::Vector2f brickCenter = brick.shape.getPosition() + brick.shape.getSize() / 2.f;
-                sf::Vector2f projectileCenter = projectile.shape.getPosition();
-                sf::Vector2f direction = projectileCenter - brickCenter;
+                sf::Vector2f ballCenter = ball.shape.getPosition();
+                sf::Vector2f direction = ballCenter - brickCenter;
                 
                 // Normaliser la direction
                 float length = std::sqrt(direction.x * direction.x + direction.y * direction.y);
                 if (length > 0) {
                     direction /= length;
-                    projectile.velocity = direction * PROJECTILE_SPEED * 0.8f; // Réduire un peu la vitesse
+                    ball.velocity = direction * PROJECTILE_SPEED * 0.8f; // Réduire un peu la vitesse
                 }
                 
                 std::cout << "Brique touchée ! Score: " << gameData.score << std::endl;
@@ -289,11 +281,11 @@ void CannonGame::removeDestroyedObjects() {
         bricks.end()
     );
     
-    // Supprimer les projectiles inactifs
-    projectiles.erase(
-        std::remove_if(projectiles.begin(), projectiles.end(),
-            [](const Projectile& proj) { return !proj.active; }),
-        projectiles.end()
+    // Supprimer les balles inactives
+    balls.erase(
+        std::remove_if(balls.begin(), balls.end(),
+            [](const Ball& b) { return !b.active; }),
+        balls.end()
     );
 }
 
@@ -316,18 +308,18 @@ void CannonGame::draw(sf::RenderWindow& window, const GameData& gameData) {
         }
     }
     
-    // Dessiner les projectiles
-    for (const auto& projectile : projectiles) {
-        if (projectile.active) {
-            window.draw(projectile.shape);
+    // Dessiner les balles
+    for (const auto& ball : balls) {
+        if (ball.active) {
+            window.draw(ball.shape);
             
             // Effet de traînée (trail)
-            sf::CircleShape trail = projectile.shape;
+            sf::CircleShape trail = ball.shape;
             trail.setRadius(2.f);
             trail.setFillColor(sf::Color(255, 255, 0, 100));
             trail.setOrigin(sf::Vector2f(2.f, 2.f));
-            sf::Vector2f trailPos = projectile.shape.getPosition();
-            trailPos -= projectile.velocity * 0.02f; // Position légèrement en arrière
+            sf::Vector2f trailPos = ball.shape.getPosition();
+            trailPos -= ball.velocity * 0.02f; // Position légèrement en arrière
             trail.setPosition(trailPos);
             window.draw(trail);
         }

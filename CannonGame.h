@@ -7,14 +7,16 @@
 #include <vector>
 #include <cmath>
 
-// Structure pour les projectiles
-struct Projectile {
+// Structure pour les projectiles (balles)
+struct Ball {
     sf::CircleShape shape;
     sf::Vector2f velocity;
     bool active;
+    float lifetime; // Durée de vie avant disparition
+    float maxLifetime;
     
-    Projectile(sf::Vector2f position, sf::Vector2f vel) 
-        : velocity(vel), active(true) {
+    Ball(sf::Vector2f position, sf::Vector2f vel, float life = 10.f) 
+        : velocity(vel), active(true), lifetime(life), maxLifetime(life) {
         shape.setRadius(4.f);
         shape.setPosition(position);
         shape.setFillColor(sf::Color::Yellow);
@@ -154,7 +156,7 @@ public:
     
 private:
     Cannon cannon;
-    std::vector<Projectile> projectiles;
+    std::vector<Ball> balls;
     std::vector<CannonBrick> bricks;
     std::vector<CannonParticle> particles; // Liste des particules d'explosion
     
@@ -168,7 +170,7 @@ private:
     float shakeIntensity = 5.0f;
     
     void createBricks();
-    void updateProjectiles(float deltaTime, GameState& gameState);
+    void updateBalls(float deltaTime, GameState& gameState);
     void checkCollisions(GameData& gameData, GameState& gameState);
     void removeDestroyedObjects();
     void createExplosion(float x, float y, sf::Color color);
