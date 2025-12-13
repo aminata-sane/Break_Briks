@@ -312,21 +312,19 @@ void CannonGame::draw(sf::RenderWindow& window, const GameData& gameData) {
         }
     }
     
-    // Dessiner les balles
-    for (const auto& ball : balls) {
-        if (ball.active) {
-            window.draw(ball.shape);
-            
-            // Effet de traînée (trail)
-            sf::CircleShape trail = ball.shape;
-            trail.setRadius(2.f);
-            trail.setFillColor(sf::Color(255, 255, 0, 100));
-            trail.setOrigin(sf::Vector2f(2.f, 2.f));
-            sf::Vector2f trailPos = ball.shape.getPosition();
-            trailPos -= ball.velocity * 0.02f; // Position légèrement en arrière
-            trail.setPosition(trailPos);
-            window.draw(trail);
-        }
+    // Dessiner toutes les balles actives
+    for (const auto& b : balls) {
+        window.draw(b.shape);
+        
+        // Effet de traînée (trail) pour chaque balle
+        sf::CircleShape trail = b.shape;
+        trail.setRadius(2.f);
+        trail.setFillColor(sf::Color(255, 255, 0, 100));
+        trail.setOrigin(sf::Vector2f(2.f, 2.f));
+        sf::Vector2f trailPos = b.shape.getPosition();
+        trailPos -= b.velocity * 0.02f; // Position légèrement en arrière
+        trail.setPosition(trailPos);
+        window.draw(trail);
     }
     
     // Dessiner le canon
