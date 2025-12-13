@@ -144,15 +144,16 @@ void CannonGame::update(float deltaTime, GameState& gameState, GameData& gameDat
 }
 
 void CannonGame::updateBalls(float deltaTime, GameState& gameState) {
-    for (auto& ball : balls) {
+    for (int i = 0; i < balls.size(); i++) {
+        Ball& ball = balls[i];
         if (!ball.active) continue;
         
-        // Mettre à jour la position
+        // Mise à jour physique - Mettre à jour la position
         sf::Vector2f newPos = ball.shape.getPosition();
         newPos += ball.velocity * deltaTime;
         ball.shape.setPosition(newPos);
         
-        // Vérifier les rebonds sur les murs
+        // Gestion des rebonds sur les murs latéraux
         if (newPos.x <= ball.shape.getRadius() || newPos.x >= 800.f - ball.shape.getRadius()) {
             ball.velocity.x = -ball.velocity.x;
             // Repositionner pour éviter les chevauchements
@@ -171,19 +172,25 @@ void CannonGame::updateBalls(float deltaTime, GameState& gameState) {
             ball.shape.setPosition(newPos);
         }
         
-        // Disparaît si sort par le bas (et décrémenter la durée de vie)
+        // Décrémenter la durée de vie
         ball.lifetime -= deltaTime;
+        
+        // Nettoyage : Si la balle sort par le bas ou durée de vie expirée
         if (newPos.y >= 600.f || ball.lifetime <= 0.f) {
-            ball.active = false;
+            std::cout << "🗑️  Balle " << (i + 1) << " supprimée (hors écran)" << std::endl;
+            balls.erase(balls.begin() + i);
+            i--; // Décrémente i car la liste a rétréci
         }
     }
 }
 
 void CannonGame::checkCollisions(GameData& gameData, GameState& gameState) {
-    for (auto& ball : balls) {
+    for (int ballIdx = 0; ballIdx < balls.size(); ballIdx++) {
+        Ball& ball = balls[ballIdx];
         if (!ball.active) continue;
         
         // Vérifier les collisions avec les briques
+        bool ballHit = false;
         for (int i = 0; i < bricks.size(); i++) {
             auto& brick = bricks[i];
             if (brick.destroyed) continue;
@@ -192,6 +199,7 @@ void CannonGame::checkCollisions(GameData& gameData, GameState& gameState) {
                 // Collision détectée
                 brick.takeDamage();
                 gameData.score += 10;
+                ballHit = true;
                 
                 // Créer une explosion à la position de la brique
                 sf::Vector2f brickPos = brick.shape.getPosition() + brick.shape.getSize() / 2.f;
@@ -266,8 +274,8 @@ void CannonGame::checkCollisions(GameData& gameData, GameState& gameState) {
                     ball.velocity = direction * PROJECTILE_SPEED * 0.8f; // Réduire un peu la vitesse
                 }
                 
-                std::cout << "Brique touchée ! Score: " << gameData.score << std::endl;
-                break; // Un projectile ne peut toucher qu'une brique à la fois
+                std::cout << "🎯 Brique touchée ! Score: " << gameData.score << std::endl;
+                break; // Une balle ne peut toucher qu'une brique à la fois
             }
         }
     }
@@ -281,12 +289,8 @@ void CannonGame::removeDestroyedObjects() {
         bricks.end()
     );
     
-    // Supprimer les balles inactives
-    balls.erase(
-        std::remove_if(balls.begin(), balls.end(),
-            [](const Ball& b) { return !b.active; }),
-        balls.end()
-    );
+    // Les balles inactives sont maintenant supprimées directement dans updateBalls()
+    // pour éviter les problèmes d'indexation
 }
 
 bool CannonGame::isVictorious() const {
