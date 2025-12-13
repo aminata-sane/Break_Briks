@@ -127,7 +127,7 @@ public:
     
     void initialize(sf::RenderWindow& window);
     void handleEvents(sf::RenderWindow& window, const sf::Event& event, GameData& gameData);
-    void update(float deltaTime, GameState& gameState, GameData& gameData);
+    void update(float deltaTime, GameState& gameState, GameData& gameData, sf::RenderWindow& window);
     void draw(sf::RenderWindow& window, const GameData& gameData);
     
 private:
@@ -138,6 +138,11 @@ private:
     sf::Clock shootCooldown;
     const float PROJECTILE_SPEED = 400.f;
     const float SHOOT_DELAY = 0.1f; // Délai entre les tirs en secondes
+    
+    // Variables pour le Screen Shake (tremblement d'écran)
+    sf::View view;
+    float shakeTimer = 0.0f;
+    const float shakeIntensity = 5.0f;
     
     void createBricks();
     void updateProjectiles(float deltaTime, GameState& gameState);

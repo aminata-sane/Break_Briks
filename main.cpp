@@ -78,7 +78,7 @@ int main() {
                 if (gameData.currentMode == GameMode::PADDLE) {
                     updateGame(gameData, deltaTime, currentState);
                 } else if (gameData.currentMode == GameMode::CANNON) {
-                    cannonGame.update(deltaTime, currentState, gameData);
+                    cannonGame.update(deltaTime, currentState, gameData, window);
                 }
                 
                 // Mettre à jour le titre de la fenêtre si le score ou les vies changent

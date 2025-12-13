@@ -6,11 +6,17 @@ CannonGame::CannonGame() {
 }
 
 void CannonGame::initialize(sf::RenderWindow& window) {
+    // Initialiser la view (caméra)
+    view = window.getDefaultView();
+    
     // Réinitialiser le canon
     cannon = Cannon();
     
     // Vider les projectiles
     projectiles.clear();
+    
+    // Réinitialiser le shake
+    shakeTimer = 0.0f;
     
     // Créer la grille de briques
     createBricks();
@@ -92,7 +98,23 @@ void CannonGame::handleEvents(sf::RenderWindow& window, const sf::Event& event, 
     }
 }
 
-void CannonGame::update(float deltaTime, GameState& gameState, GameData& gameData) {
+void CannonGame::update(float deltaTime, GameState& gameState, GameData& gameData, sf::RenderWindow& window) {
+    // Gestion du Screen Shake
+    if (shakeTimer > 0) {
+        shakeTimer -= deltaTime;
+        // Génère un décalage aléatoire entre -Intensité et +Intensité
+        float offsetX = (rand() % 100 - 50) / 50.0f * shakeIntensity;
+        float offsetY = (rand() % 100 - 50) / 50.0f * shakeIntensity;
+        
+        // Applique le décalage à la vue
+        sf::View shakenView = window.getDefaultView();
+        shakenView.move(sf::Vector2f(offsetX, offsetY));
+        window.setView(shakenView);
+    } else {
+        // Remet la caméra normale quand c'est fini
+        window.setView(window.getDefaultView());
+    }
+    
     updateProjectiles(deltaTime, gameState);
     checkCollisions(gameData, gameState);
     removeDestroyedObjects();
@@ -151,6 +173,9 @@ void CannonGame::checkCollisions(GameData& gameData, GameState& gameState) {
                 // Collision détectée
                 brick.takeDamage();
                 gameData.score += 10;
+                
+                // Déclencher le Screen Shake !
+                shakeTimer = 0.2f; // Tremble pendant 0.2 secondes
                 
                 // Effet de rebond du projectile
                 sf::Vector2f brickCenter = brick.shape.getPosition() + brick.shape.getSize() / 2.f;
