@@ -45,9 +45,10 @@ struct CannonBrick {
     int maxHitPoints;
     bool destroyed;
     bool isTNT;  // Brique explosive
+    bool isBonusShotgun;  // Brique bonus SHOTGUN (cyan)
     
     CannonBrick(sf::Vector2f position, int hp = 3) 
-        : hitPoints(hp), maxHitPoints(hp), destroyed(false), isTNT(false) {
+        : hitPoints(hp), maxHitPoints(hp), destroyed(false), isTNT(false), isBonusShotgun(false) {
         shape.setSize(sf::Vector2f(75.f, 25.f));
         shape.setPosition(position);
         updateColor();
@@ -69,6 +70,12 @@ struct CannonBrick {
             shape.setFillColor(sf::Color(255, 50, 50)); // Rouge vif
             shape.setOutlineThickness(2.f);
             shape.setOutlineColor(sf::Color(255, 200, 0)); // Contour doré
+        }
+        // Les briques SHOTGUN sont cyan brillant
+        else if (isBonusShotgun) {
+            shape.setFillColor(sf::Color(0, 255, 255)); // Cyan brillant
+            shape.setOutlineThickness(2.f);
+            shape.setOutlineColor(sf::Color(0, 100, 255)); // Contour bleu
         } else {
             // Couleur selon les points de vie
             if (hitPoints >= maxHitPoints) {

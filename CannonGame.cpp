@@ -51,10 +51,17 @@ void CannonGame::createBricks() {
             int hitPoints = 1 + (row / 2); // 1-4 points de vie
             bricks.emplace_back(position, hitPoints);
             
+            int randomValue = rand() % 100;
+            
             // 10% de chance qu'une brique soit TNT
-            if ((rand() % 100) < 10) {
+            if (randomValue < 10) {
                 bricks.back().isTNT = true;
                 bricks.back().updateColor(); // Appliquer la couleur TNT
+            }
+            // 5% de chance qu'une brique soit SHOTGUN (et pas TNT)
+            else if (randomValue < 15) {
+                bricks.back().isBonusShotgun = true;
+                bricks.back().updateColor(); // Appliquer la couleur cyan
             }
         }
     }
@@ -256,8 +263,45 @@ void CannonGame::checkCollisions(GameData& gameData, GameState& gameState) {
                             }
                         }
                     }
+                }
+                // Si c'est une brique SHOTGUN BONUS !
+                else if (brick.isBonusShotgun && brick.destroyed) {
+                    // Screen Shake moyen
+                    shakeTimer = 0.3f;
+                    shakeIntensity = 8.0f;
+                    
+                    std::cout << "🔫 SHOTGUN BONUS DÉCLENCHÉ !" << std::endl;
+                    
+                    // Créer 5 balles en cône depuis la position de la brique
+                    sf::Vector2f brickCenter = brick.shape.getPosition() + brick.shape.getSize() / 2.f;
+                    
+                    // Angle initial de la balle qui a touché
+                    float baseAngle = std::atan2(ball.velocity.y, ball.velocity.x);
+                    
+                    for (int k = -2; k <= 2; k++) {
+                        // Copier les propriétés de la balle qui a déclenché le bonus
+                        Ball newBall = ball;
+                        
+                        // Créer un cône de balles
+                        float spreadAngle = baseAngle + (k * 10.0f * M_PI / 180.0f); // Spread de 10° entre chaque balle
+                        float speed = PROJECTILE_SPEED * 0.9f;
+                        
+                        // Appliquer la nouvelle direction
+                        newBall.velocity.x = speed * std::cos(spreadAngle);
+                        newBall.velocity.y = speed * std::sin(spreadAngle);
+                        
+                        // Position de départ à la position de la brique
+                        newBall.shape.setPosition(brickCenter);
+                        newBall.lifetime = 10.f; // Durée de vie normale
+                        newBall.active = true;
+                        
+                        balls.push_back(newBall);
+                    }
+                    
+                    gameData.score += 100; // Bonus massif pour le SHOTGUN !
+                    std::cout << "💥 +100 BONUS SHOTGUN !" << std::endl;
                 } else {
-                    // Shake normal pour les briques non-TNT
+                    // Shake normal pour les briques non-TNT/non-SHOTGUN
                     shakeTimer = 0.2f;
                     shakeIntensity = 5.0f;
                 }
